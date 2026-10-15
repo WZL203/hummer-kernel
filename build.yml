@@ -1,0 +1,113 @@
+name: build-hummer-susfs-kernel
+
+# Manual trigger only. Builds the crDroid 17.0 kernel for hummer (PKR110)
+# from the exact source commit of the running stock crDroid kernel,
+# with KernelSU (built-in, tag v3.3.1) and SuSFS v2.3.0 integrated.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout this repo (device.config)
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y bc bison flex libssl-dev libelf-dev dwarves zip git curl xz-utils build-essential
+
+      - name: Fetch LLVM 22 toolchain
+        run: |
+          set -euxo pipefail
+          curl -fL --retry 5 --retry-delay 5 --retry-all-errors -o /tmp/llvm.tar.xz "https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.0/LLVM-22.1.0-Linux-X64.tar.xz"
+          mkdir -p "$HOME/llvm"
+          tar -xJf /tmp/llvm.tar.xz --no-same-owner -C "$HOME/llvm" --strip-components=1
+          "$HOME/llvm/bin/clang" --version | head -2
+
+      - name: Fetch pinned kernel sources
+        run: |
+          set -euxo pipefail
+          mkdir -p ws
+          git clone https://github.com/crdroidandroid/android_kernel_oneplus_sm8750 -b 17.0 ws/common
+          git -C ws/common checkout 48baf0c723f8d6d1efa4db9d2cb5ad6df83ab976
+          git clone https://github.com/crdroidandroid/android_kernel_oneplus_sm8750-modules -b 17.0 ws/sm8750-modules
+          git -C ws/sm8750-modules checkout 204b190250343259fc7925c6f50a9365b2bff629
+          git clone https://github.com/crdroidandroid/android_kernel_oneplus_sm8750-devicetrees -b 17.0 ws/sm8750-devicetrees
+          git -C ws/sm8750-devicetrees checkout 2f46fad8ad309266de2405666016f8e0679883d5
+          head -4 ws/common/Makefile
+
+      - name: Integrate KernelSU v3.3.1 (built-in)
+        working-directory: ${{ github.workspace }}/ws/common
+        run: |
+          set -euxo pipefail
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v3.3.1
+          test -e drivers/kernelsu/Kconfig
+          ls KernelSU/kernel | head
+
+      - name: Integrate SuSFS v2.3.0
+        run: |
+          set -euxo pipefail
+          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android15-6.6 ws/susfs
+          git -C ws/susfs checkout 2d11d711de80f0f749b3055f8da8f7b9682454e4
+          grep -m1 SUSFS_VERSION ws/susfs/kernel_patches/include/linux/susfs.h
+          cp ws/susfs/kernel_patches/fs/susfs.c ws/common/fs/
+          cp ws/susfs/kernel_patches/include/linux/susfs.h ws/susfs/kernel_patches/include/linux/susfs_def.h ws/common/include/linux/
+          cd ws/common
+          patch -p1 < ../susfs/kernel_patches/50_add_susfs_in_gki-android15-6.6.patch
+          cd KernelSU
+          patch -p1 < ../../susfs/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch
+
+      - name: Configure (device config + KSU + SuSFS)
+        working-directory: ${{ github.workspace }}/ws/common
+        run: |
+          set -euxo pipefail
+          export PATH="$HOME/llvm/bin:$PATH"
+          cp "${{ github.workspace }}/device.config" .config
+          printf "CONFIG_KSU=y\nCONFIG_KSU_SUSFS=y\n" >> .config
+          sed -i 's/^CONFIG_LOCALVERSION_AUTO=y/# CONFIG_LOCALVERSION_AUTO is not set/' .config
+          sed -i 's/^CONFIG_LOCALVERSION="-4k"/CONFIG_LOCALVERSION="-4k-g48baf0c723f8"/' .config
+          make ARCH=arm64 LLVM=1 olddefconfig
+          grep -E "^CONFIG_KSU=y" .config
+          grep -E "^CONFIG_KSU_SUSFS=y" .config
+          echo "SUSFS options enabled: $(grep -c '^CONFIG_KSU_SUSFS.*=y' .config)"
+          echo "kernelrelease: $(make -s ARCH=arm64 LLVM=1 kernelrelease)"
+
+      - name: Build kernel Image
+        working-directory: ${{ github.workspace }}/ws/common
+        run: |
+          set -euxo pipefail
+          export PATH="$HOME/llvm/bin:$PATH"
+          make ARCH=arm64 LLVM=1 -j"$(nproc)" Image
+          ls -lh arch/arm64/boot/Image
+          strings arch/arm64/boot/Image | grep -m1 "Linux version"
+          strings arch/arm64/boot/Image | grep -im2 "susfs" || true
+
+      - name: Package AnyKernel3 zip
+        run: |
+          set -euxo pipefail
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3 ak3
+          cp ws/common/arch/arm64/boot/Image ak3/Image
+          cd ak3
+          sed -i 's/^device.name1=.*/device.name1=hummer/' anykernel.sh
+          sed -i 's/^device.name2=.*/device.name2=PKR110/' anykernel.sh
+          sed -i 's/^device.name3=.*/device.name3=/' anykernel.sh
+          sed -i 's/^device.name4=.*/device.name4=/' anykernel.sh
+          sed -i 's/^device.name5=.*/device.name5=/' anykernel.sh
+          rm -rf .git
+          zip -r9 "${{ github.workspace }}/AK3-hummer-crdroid17-ksu-susfs.zip" .
+          ls -lh "${{ github.workspace }}/AK3-hummer-crdroid17-ksu-susfs.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AK3-hummer-kernel
+          path: AK3-hummer-crdroid17-ksu-susfs.zip
+          if-no-files-found: error
