@@ -35,9 +35,9 @@
 > [!WARNING]
 > 刷入第三方内核具有一定风险。在执行任何刷写操作前，请务必备份当前设备的 `boot` 及 `init_boot` 分区镜像。
 
-### 方式一：通过 Kernel Flasher（推荐）
+### 方式一：通过 [ReKernelFlasher](https://github.com/Bacillusf/ReKernelFlasher)（推荐）
 1. 在 [Releases](../../releases) 页面下载最新构建的 `AK3-*.zip` 刷机包。
-2. 打开具备 Root 权限的 **Kernel Flasher** 或类似内核管理工具。
+2. 打开具备 Root 权限的 [ReKernelFlasher](https://github.com/Bacillusf/ReKernelFlasher) 或类似内核管理工具。
 3. 选取下载的 zip 刷机包进行刷入并重启设备。
 
 ### 方式二：通过 Recovery
@@ -49,5 +49,4 @@
 
 ## 🔍 环境验证
 
-设备正常启动后，可通过MT管理器Root执行发布页面的check.sh核验内核及安全接口状态：
-
+设备正常启动后，可通过 MT 管理器以 Root 权限执行发布页面的 `check.sh` 核验内核及安全接口状态。
