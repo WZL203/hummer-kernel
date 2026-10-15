@@ -45,7 +45,7 @@
 2. 直接通过 `Apply update` 或 `Install` 刷入 `AK3-*.zip`。
 3. 刷入完成后清除 Cache 并重启至系统。
 
-### 方式三：通过 Fastboot 命令行刷入 `boot.img`
+### 方式三：通过 Fastboot 命令行刷入 `AK3boot.img`
 将手机连接电脑并开启 USB 调试，打开终端（PowerShell）执行以下指令：
 
 ```powershell
@@ -59,7 +59,7 @@ cd C:\path\to\platform-tools
 .\fastboot devices
 
 # 4. 刷入内核镜像（请根据当前激活槽位选择 boot_a 或 boot_b，或直接刷入 boot）
-.\fastboot flash boot_b C:\path\to\new-boot.img
+.\fastboot flash boot_b C:\path\to\AK3boot.img
 
 # 5. 重启进入系统
 .\fastboot reboot
