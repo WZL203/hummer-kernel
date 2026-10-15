@@ -45,7 +45,14 @@
 2. 直接通过 `Apply update` 或 `Install` 刷入 `AK3-*.zip`。
 3. 刷入完成后清除 Cache 并重启至系统。
 
----
+### 方式三 通过连接电脑ADB命令刷入boot.img
+示列
+cd C:\Users\lixu4\Downloads\platform-tools
+.\adb reboot bootloader
+.\fastboot devices
+.\fastboot flash boot_b C:\Users\lixu4\Downloads\new-boot.img
+.\fastboot reboot
+
 
 ## 🔍 环境验证
 
