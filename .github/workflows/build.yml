@@ -38,6 +38,9 @@ jobs:
           mkdir -p ws
           git clone https://github.com/crdroidandroid/android_kernel_oneplus_sm8750 -b 17.0 ws/common
           git -C ws/common checkout 48baf0c723f8d6d1efa4db9d2cb5ad6df83ab976
+          rm -rf ws/common/.git
+          # ^ remove git metadata so setlocalversion does not append a "+" to the
+          #   kernel release string; release must stay 6.6.144-4k-g48baf0c723f8
           git clone https://github.com/crdroidandroid/android_kernel_oneplus_sm8750-modules -b 17.0 ws/sm8750-modules
           git -C ws/sm8750-modules checkout 204b190250343259fc7925c6f50a9365b2bff629
           git clone https://github.com/crdroidandroid/android_kernel_oneplus_sm8750-devicetrees -b 17.0 ws/sm8750-devicetrees
@@ -101,6 +104,8 @@ jobs:
           sed -i 's/^device.name3=.*/device.name3=/' anykernel.sh
           sed -i 's/^device.name4=.*/device.name4=/' anykernel.sh
           sed -i 's/^device.name5=.*/device.name5=/' anykernel.sh
+          sed -i 's|^BLOCK=.*|BLOCK=/dev/block/by-name/boot;|' anykernel.sh
+          sed -i 's|^IS_SLOT_DEVICE=.*|IS_SLOT_DEVICE=1;|' anykernel.sh
           rm -rf .git
           zip -r9 "${{ github.workspace }}/AK3-hummer-crdroid17-ksu-susfs.zip" .
           ls -lh "${{ github.workspace }}/AK3-hummer-crdroid17-ksu-susfs.zip"
