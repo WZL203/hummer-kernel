@@ -45,15 +45,21 @@
 2. 直接通过 `Apply update` 或 `Install` 刷入 `AK3-*.zip`。
 3. 刷入完成后清除 Cache 并重启至系统。
 
-### 方式三 通过连接电脑ADB命令刷入boot.img
-示列
-cd C:\Users\lixu4\Downloads\platform-tools
+### 方式三：通过 Fastboot 命令行刷入 `boot.img`
+将手机连接电脑并开启 USB 调试，打开终端（PowerShell）执行以下指令：
+
+```powershell
+# 1. 进入 platform-tools 工具目录
+cd C:\path\to\platform-tools
+
+# 2. 重启设备至 Bootloader (Fastboot) 模式
 .\adb reboot bootloader
+
+# 3. 确认设备已正常连接
 .\fastboot devices
-.\fastboot flash boot_b C:\Users\lixu4\Downloads\new-boot.img
+
+# 4. 刷入内核镜像（请根据当前激活槽位选择 boot_a 或 boot_b，或直接刷入 boot）
+.\fastboot flash boot_b C:\path\to\new-boot.img
+
+# 5. 重启进入系统
 .\fastboot reboot
-
-
-## 🔍 环境验证
-
-设备正常启动后，可通过 MT 管理器以 Root 权限执行发布页面的 `check.sh` 核验内核及安全接口状态。
