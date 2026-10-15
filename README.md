@@ -1,18 +1,59 @@
-hummer 内核构建包（KernelSU 编入 + SuSFS v2.3.0）
-给一加 Ace 5 Pro（hummer / PKR110）上正在跑的 crDroid 13（Android 17）内核做的复刻构建：
-源码 = crDroid 官方内核仓库 17.0 分支、与手机当前内核完全相同的提交（48baf0c723f8）；
-配置 = 从手机 boot.img 提取的原始配置，只多了 CONFIG_KSU 与 CONFIG_KSU_SUSFS 两项。
-本地已预演通过：两个补丁共 53 个文件零失败、配置解析通过、SuSFS 子功能 10 项全开。
-你要做的（GitHub 网页上，约 5 分钟）
-新建仓库：GitHub 右上角 + → New repository，名字随便（如 hummer-kernel），选 Public，点 Create。
-传配置文件：在仓库页面点 "uploading an existing file"，把本包里的 device.config 传上去，Commit。
-建 workflow：点 "creating a new file"，文件名填 .github/workflows/build.yml，
-把本包里 build.yml 的全部内容粘进去，Commit。
-运行：仓库上方 Actions 页签 → 左侧选 "build-hummer-susfs-kernel" → Run workflow → 绿色 Run workflow。
-（第一次进 Actions 可能要先点一下启用 workflows。）
-等它跑完（绿色对勾），在运行页面最下面 Artifacts 里下载 AK3-hummer-kernel，
-解压得到 AK3-hummer-crdroid17-ksu-susfs.zip。
-重要
-下载的 AK3 zip 先发给 Muse 验（查版本串和 SuSFS 标记），验过再刷，不要直接刷。
-刷之前确认 boot-stock-backup.img 和 init_boot-lkm-backup.img 还在电脑 Downloads 里（救砖用）。
-构建若中途变红失败，把失败步骤的日志截图发 Muse，不要反复重跑。
+# Hummer Kernel (GKI 6.6)
+
+[![Build Kernel](https://github.com/WZL203/hummer-kernel/actions/workflows/build.yml/badge.svg)](https://github.com/WZL203/hummer-kernel/actions)
+[![License: GPL-2.0](https://img.shields.io/badge/License-GPL%202.0-blue.svg)](https://opensource.org/licenses/GPL-2.0)
+[![Android](https://img.shields.io/badge/Android-15%2B-green.svg)](https://www.android.com/)
+
+基于通用 Android GKI 6.6 内核构建的自定义分支，重点集成内核级权限控制与深度隐蔽方案，兼顾系统稳定性与运行效率。
+
+---
+
+## 📌 项目特性
+
+- **通用 GKI 架构**：遵循 Google Android Common Kernel (ACK) 规范构建，适配兼容的 GKI 架构设备。
+- **4K 页面对齐**：采用标准 4KB 内存分页大小（Page Size），保障针对非 16K 环境的深度兼容性。
+- **Root 方案集成**：内置支持 KernelSU，提供高效的底层权限控制与隔离机制。
+- **隐蔽增强 (SuSFS)**：同步集成 SuSFS 内核层补丁，消除挂载特征、隐藏敏感文件路径并协助通过严苛的应用环境检测。
+- **自动化构建体系**：基于 GitHub Actions 提供持续集成（CI）与自动化 AnyKernel3 (AK3) 打包分发。
+
+---
+
+## ⚙️ 编译规格
+
+| 配置项 | 规格说明 |
+| :--- | :--- |
+| **内核基线** | Linux Kernel 6.6.y (ACK) |
+| **目标架构** | `aarch64` / `arm64` |
+| **Page Size** | 4 KB (`CONFIG_ARM64_4K_PAGES=y`) |
+| **工具链** | Clang / LLVM (AOSP Toolchain) |
+| **核心组件** | KernelSU + SuSFS 2.x |
+
+---
+
+## 📦 刷入指南
+
+> [!WARNING]
+> 刷入第三方内核具有一定风险。在执行任何刷写操作前，请务必备份当前设备的 `boot` 及 `init_boot` 分区镜像。
+
+### 方式一：通过 Kernel Flasher（推荐）
+1. 在 [Releases](../../releases) 页面下载最新构建的 `AK3-*.zip` 刷机包。
+2. 打开具备 Root 权限的 **Kernel Flasher** 或类似内核管理工具。
+3. 选取下载的 zip 刷机包进行刷入并重启设备。
+
+### 方式二：通过 Recovery
+1. 设备重启至支持的三方 Recovery 界面。
+2. 直接通过 `Apply update` 或 `Install` 刷入 `AK3-*.zip`。
+3. 刷入完成后清除 Cache 并重启至系统。
+
+---
+
+## 🔍 环境验证
+
+设备正常启动后，可通过终端执行以下指令核验内核及安全接口状态：
+
+```bash
+# 验证内核版本与构建标识
+uname -r
+
+# 验证 SuSFS 内核接口就绪状态
+su -c "ls -d /sys/kernel/susfs"
